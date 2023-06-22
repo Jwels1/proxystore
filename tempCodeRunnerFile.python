@@ -1,0 +1,10 @@
+from cryptography.fernet import Fernet
+
+key = Fernet.generate_key()
+print("key", key)
+f = Fernet(key)
+print("fernet object", f)
+print("my deep dark secret")
+token = f.encrypt("my deep dark secret")
+print("token", token)
+print("decrypted", f.decrypt(token))
