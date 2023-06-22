@@ -7,6 +7,7 @@ from typing import NamedTuple
 from typing import Sequence
 from typing import TypeVar
 
+
 if sys.version_info >= (3, 8):  # pragma: >=3.8 cover
     from typing import Protocol
     from typing import runtime_checkable
