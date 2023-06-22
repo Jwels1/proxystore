@@ -124,64 +124,74 @@ class FileConnector:
         path = os.path.join(self.store_dir, key.filename)
         return os.path.exists(path)
 
-    def get(self, key: FileKey, crypt_key,) -> bytes | None:
+    def get(self, key: FileKey, decrypt: bool = False, crypt_key = -1) -> bytes | None:
         """Get the serialized object associated with the key.
 
         Args:
             key: Key associated with the object to retrieve.
+            decrypt: boolean if information was originally encrypted
             crypt_key: key for symmetric encryption
 
         Returns:
             Serialized object or `None` if the object does not exist.
         """
-        fernet = Fernet(crypt_key)
+        
         path = os.path.join(self.store_dir, key.filename)
         if os.path.exists(path):
             with open(path, 'rb') as f:
                 data = f.read()
-                data = fernet.decrypt(data)
+                if decrypt == True:
+                    fernet = Fernet(crypt_key)
+                    data = fernet.decrypt(data)
                 return data
         return None
 
-    def get_batch(self, keys: Sequence[FileKey]) -> list[bytes | None]:
+    def get_batch(self, keys: Sequence[FileKey], decrypt: bool = False, crypt_key = -1) -> list[bytes | None]:
         """Get a batch of serialized objects associated with the keys.
 
         Args:
             keys: Sequence of keys associated with objects to retrieve.
+            decrypt: boolean if information was originally encrypted
+            crypt_key: symmetric key for encryption
 
         Returns:
             List with same order as `keys` with the serialized objects or
             `None` if the corresponding key does not have an associated object.
         """
-        return [self.get(key) for key in keys]
+        return [self.get(key, decrypt, crypt_key) for key in keys]
 
-    def put(self, obj: bytes, crypt_key) -> FileKey:
+    def put(self, obj: bytes, encrypt: bool = False, crypt_key = -1) -> FileKey:
         """Put a serialized object in the store.
 
         Args:
             obj: Serialized object to put in the store.
+            encrypt: boolean if information needs to be encrypted
             crypt_key: key for symmetric encryption
         Returns:
             Key which can be used to retrieve the object.
         """
         key = FileKey(filename=str(uuid.uuid4()))
-        fernet = Fernet(crypt_key)
+        
 
         path = os.path.join(self.store_dir, key.filename)
         with open(path, 'wb', buffering=0) as f:
-            obj = fernet.encrypt(obj)
+            if encrypt == True:
+                fernet = Fernet(crypt_key)
+                obj = fernet.encrypt(obj)
             f.write(obj)
 
         return key
 
-    def put_batch(self, objs: Sequence[bytes]) -> list[FileKey]:
+    def put_batch(self, objs: Sequence[bytes], encrypt: bool = False, crypt_key = -1) -> list[FileKey]:
         """Put a batch of serialized objects in the store.
 
         Args:
             objs: Sequence of serialized objects to put in the store.
+            encrypt: boolean if information needs to be encrypted
+            crypt_key: the symmetric encryption key
 
         Returns:
             List of keys with the same order as `objs` which can be used to
             retrieve the objects.
         """
-        return [self.put(obj) for obj in objs]
+        return [self.put(obj, encrypt, crypt_key) for obj in objs]
