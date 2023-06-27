@@ -16,6 +16,7 @@ else:  # pragma: <3.11 cover
     from typing_extensions import Self
 
 import requests
+from cryptography.fernet import Fernet
 
 from proxystore.endpoint import client
 from proxystore.endpoint.config import EndpointConfig
@@ -203,44 +204,52 @@ class EndpointConnector:
                 f'Exists failed with error code {e.response.status_code}.',
             ) from e
 
-    def get(self, key: EndpointKey) -> bytes | None:
+    def get(self, key: EndpointKey, decrypt: bool = False, crypt_key = b'') -> bytes | None:
         """Get the serialized object associated with the key.
 
         Args:
             key: Key associated with the object to retrieve.
-
+            decrypt: boolean if information was originally encrypted
+            crypt_key: key for symmetric encryption
+            
         Returns:
             Serialized object or `None` if the object does not exist.
         """
         try:
+            
             return client.get(
                 self.address,
                 key.object_id,
                 key.endpoint_id,
                 session=self._session,
+                decrypt = decrypt,
+                crypt_key = crypt_key
             )
         except requests.exceptions.RequestException as e:
             raise EndpointConnectorError(
                 f'Get failed with error code {e.response.status_code}.',
             ) from e
 
-    def get_batch(self, keys: Sequence[EndpointKey]) -> list[bytes | None]:
+    def get_batch(self, keys: Sequence[EndpointKey], decrypt: bool = False, crypt_key = b'') -> list[bytes | None]:
         """Get a batch of serialized objects associated with the keys.
 
         Args:
             keys: Sequence of keys associated with objects to retrieve.
-
+            decrypt: boolean if information was originally encrypted
+            crypt_key: key for symmetric encryption
         Returns:
             List with same order as `keys` with the serialized objects or \
             `None` if the corresponding key does not have an associated object.
         """
-        return [self.get(key) for key in keys]
+        return [self.get(key, decrypt, crypt_key) for key in keys]
 
-    def put(self, obj: bytes) -> EndpointKey:
+    def put(self, obj: bytes, decrypt:bool = False, crypt_key = b'') -> EndpointKey:
         """Put a serialized object in the store.
 
         Args:
             obj: Serialized object to put in the store.
+            decrypt: boolean if information was originally encrypted
+            crypt_key: key for symmetric encryption
 
         Returns:
             Key which can be used to retrieve the object.
@@ -250,6 +259,10 @@ class EndpointConnector:
             endpoint_id=str(self.endpoint_uuid),
         )
         try:
+            if decrypt == True:
+                fernet = Fernet(crypt_key)
+                obj = fernet.encrypt(obj)
+
             client.put(
                 self.address,
                 key.object_id,
@@ -264,7 +277,7 @@ class EndpointConnector:
 
         return key
 
-    def put_batch(self, objs: Sequence[bytes]) -> list[EndpointKey]:
+    def put_batch(self, objs: Sequence[bytes], decrypt:bool = False, crypt_key = b'') -> list[EndpointKey]:
         """Put a batch of serialized objects in the store.
 
         Args:
@@ -274,4 +287,4 @@ class EndpointConnector:
             List of keys with the same order as `objs` which can be used to \
             retrieve the objects.
         """
-        return [self.put(obj) for obj in objs]
+        return [self.put(obj, decrypt, crypt_key) for obj in objs]

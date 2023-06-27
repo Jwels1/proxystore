@@ -4,6 +4,8 @@ from __future__ import annotations
 import uuid
 
 import requests
+from cryptography.fernet import Fernet
+
 from requests.exceptions import RequestException  # noqa: F401
 
 from proxystore.endpoint.constants import MAX_CHUNK_LENGTH
@@ -91,6 +93,8 @@ def get(
     key: str,
     endpoint: uuid.UUID | str | None = None,
     session: requests.Session | None = None,
+    decrypt: bool = False,
+    crypt_key = -1
 ) -> bytes | None:
     """Get the serialized object associated with the key.
 
@@ -101,6 +105,8 @@ def get(
         session: Session instance to use for making the request. Reusing the
             same session across multiple requests to the same host can improve
             performance.
+        decrypt: boolean if information was originally encrypted
+        crypt_key: key for symmetric encryption
 
     Returns:
         Serialized object or `None` if the object does not exist.
@@ -132,7 +138,11 @@ def get(
     data = bytearray()
     for chunk in response.iter_content(chunk_size=None):
         data += chunk
-    return bytes(data)
+    data = bytes(data)
+    if decrypt == True:
+        fernet = Fernet(crypt_key)
+        data = fernet.decrypt(data)
+    return data
 
 
 def put(
@@ -141,6 +151,7 @@ def put(
     data: bytes,
     endpoint: uuid.UUID | str | None = None,
     session: requests.Session | None = None,
+
 ) -> None:
     """Put a serialized object in the store.
 

@@ -72,12 +72,13 @@ class Connector(Protocol[KeyT]):
         """
         ...
 
-    def get(self, key: KeyT) -> bytes | None:
+    def get(self, key: KeyT, decrypt: bool, crypt: bytes) -> bytes | None:
         """Get the serialized object associated with the key.
 
         Args:
             key: Key associated with the object to retrieve.
-
+            decrypt: true if the object was originally encrypted
+            crypt: symmetric encryption key to decrypt
         Returns:
             Serialized object or `None` if the object does not exist.
         """
@@ -95,12 +96,13 @@ class Connector(Protocol[KeyT]):
         """
         ...
 
-    def put(self, obj: bytes) -> KeyT:
+    def put(self, obj: bytes, encrypt: bool, crypt: bytes) -> KeyT:
         """Put a serialized object in the store.
 
         Args:
             obj: Serialized object to put in the store.
-
+            encrypt: true if the object should be encrypted
+            crypt: symmetric encryption key to encrypt
         Returns:
             Key which can be used to retrieve the object.
         """

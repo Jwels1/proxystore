@@ -1,3 +1,13 @@
-from cryptography.fernet import Fernet
-for i in range(20):
-    print(Fernet.generate_key())
+from proxystore.connectors.endpoint import EndpointConnector
+from proxystore.store import Store
+
+connector = EndpointConnector(
+   endpoints=[
+       'c66a94f0-42ba-4445-a21c-0f4f038a8b32',
+       '5ea36b1d-b1f0-4d7f-9c7b-74d86df4cf1a',
+       ...
+   ],
+)
+store = Store(name='default', connector=connector)
+
+p = store.proxy("hello")

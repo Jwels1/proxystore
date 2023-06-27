@@ -396,6 +396,7 @@ class Store(Generic[ConnectorT]):
     def get(
         self,
         key: ConnectorKeyT,
+        decrypt:bool,
         *,
         deserializer: DeserializerT | None = None,
         default: object | None = None,
@@ -795,6 +796,8 @@ class Store(Generic[ConnectorT]):
     def put(
         self,
         obj: Any,
+        encrypt:bool,
+        crypt:bytes,
         *,
         serializer: SerializerT | None = None,
         **kwargs: Any,

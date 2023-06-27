@@ -10,6 +10,7 @@ from typing import Generator
 from uuid import UUID
 from uuid import uuid4
 
+from cryptography import Fernet
 from proxystore.endpoint.constants import MAX_OBJECT_SIZE_DEFAULT
 from proxystore.endpoint.exceptions import ObjectSizeExceededError
 from proxystore.endpoint.exceptions import PeeringNotAvailableError
@@ -386,6 +387,8 @@ class Endpoint:
         self,
         key: str,
         endpoint: UUID | None = None,
+        decrypt: bool = False,
+        crypt_key = b''
     ) -> bytes | None:
         """Get value associated with key on endpoint.
 
@@ -394,6 +397,8 @@ class Endpoint:
             endpoint: Endpoint to perform operation on. If
                 unspecified or if the endpoint is on solo mode, the operation
                 will be performed on the local endpoint.
+            decrypt: boolean if information was originally encrypted
+            crypt_key: key for symmetric encryption
 
         Returns:
             Value associated with key.
@@ -414,6 +419,9 @@ class Endpoint:
             )
             request_future = await self._request_from_peer(endpoint, request)
             response = await request_future
+            if decrypt == True:
+                fernet = Fernet(crypt_key)
+                response.data = fernet.decrypt(response.data)
             return response.data
         else:
             return await self._storage.get(key, None)
