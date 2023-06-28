@@ -84,11 +84,13 @@ class Connector(Protocol[KeyT]):
         """
         ...
 
-    def get_batch(self, keys: Sequence[KeyT]) -> list[bytes | None]:
+    def get_batch(self, keys: Sequence[KeyT], decyrpt: bool, crypt: bytes) -> list[bytes | None]:
         """Get a batch of serialized objects associated with the keys.
 
         Args:
             keys: Sequence of keys associated with objects to retrieve.
+            decyprt: true if the object was originally encrypted
+            crypt: symmetric encryption key to decrypt
 
         Returns:
             List with same order as `keys` with the serialized objects or \
@@ -108,11 +110,13 @@ class Connector(Protocol[KeyT]):
         """
         ...
 
-    def put_batch(self, objs: Sequence[bytes]) -> list[KeyT]:
+    def put_batch(self, objs: Sequence[bytes], encrypt: bool, crypt: bytes) -> list[KeyT]:
         """Put a batch of serialized objects in the store.
 
         Args:
             objs: Sequence of serialized objects to put in the store.
+            encrypt: true if the object should be encrypted
+            crypt: symmetric key for encryption
 
         Returns:
             List of keys with the same order as `objs` which can be used to \

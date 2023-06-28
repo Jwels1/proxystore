@@ -796,8 +796,8 @@ class Store(Generic[ConnectorT]):
     def put(
         self,
         obj: Any,
-        encrypt:bool,
-        crypt:bytes,
+        encrypt: bool,
+        crypt: bytes,
         *,
         serializer: SerializerT | None = None,
         **kwargs: Any,

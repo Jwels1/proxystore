@@ -10,7 +10,7 @@ from typing import Generator
 from uuid import UUID
 from uuid import uuid4
 
-from cryptography import Fernet
+from cryptography.fernet import Fernet
 from proxystore.endpoint.constants import MAX_OBJECT_SIZE_DEFAULT
 from proxystore.endpoint.exceptions import ObjectSizeExceededError
 from proxystore.endpoint.exceptions import PeeringNotAvailableError
