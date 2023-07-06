@@ -114,6 +114,14 @@ def version() -> None:
     help='Datachannels to use per peer connection.',
 )
 @click.option(
+    '--encrypt',
+    default = b'',
+    type = bytes,
+    metavar='KEY',
+    help='Private encryption key')
+
+
+@click.option(
     '--persist/--no-persist',
     default=False,
     metavar='BOOL',
