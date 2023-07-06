@@ -116,7 +116,7 @@ def version() -> None:
 @click.option(
     '--encrypt',
     default = b'',
-    type = bytes,
+    type = bytes ,
     metavar='KEY',
     help='Private encryption key')
 
@@ -162,11 +162,12 @@ def remove(name: str) -> None:
 @cli.command()
 @click.argument('name', metavar='NAME', required=True)
 @click.option('--detach/--no-detach', default=True, help='Run as daemon.')
+@click.option('--encrypt', default = None, help='private encryption key')
 @click.pass_context
-def start(ctx: click.Context, name: str, detach: bool) -> None:
+def start(ctx: click.Context, name: str, detach: bool, encrypt: bytes) -> None:
     """Start an endpoint."""
     raise SystemExit(
-        start_endpoint(name, detach=detach, log_level=ctx.obj['LOG_LEVEL']),
+        start_endpoint(name, encrypt=encrypt,detach=detach, log_level=ctx.obj['LOG_LEVEL']),
     )
 
 

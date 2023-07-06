@@ -233,7 +233,7 @@ def remove_endpoint(
 
 def start_endpoint(
     name: str,
-    *,
+    encrypt: str,
     detach: bool = False,
     log_level: str = 'INFO',
     proxystore_dir: str | None = None,
@@ -242,6 +242,7 @@ def start_endpoint(
 
     Args:
         name: Name of endpoint to start.
+        encrypt: private encryption key
         detach: Start the endpoint as a daemon process.
         log_level: Logging level of the endpoint.
         proxystore_dir: Optionally specify the proxystore home directory.
@@ -253,7 +254,7 @@ def start_endpoint(
     """
     if proxystore_dir is None:
         proxystore_dir = home_dir()
-
+    print("HI")
     status = get_status(name, proxystore_dir)
     if status == EndpointStatus.RUNNING:
         logger.error(f'Endpoint {name} is already running.')
@@ -288,6 +289,7 @@ def start_endpoint(
 
     # Write out new config with host so clients can see the current host
     cfg.host = hostname
+    
     write_config(cfg, endpoint_dir)
 
     log_file = get_log_filepath(endpoint_dir)
@@ -310,6 +312,7 @@ def start_endpoint(
     with context:
         serve(cfg, log_level=log_level, log_file=log_file)
 
+    print(endpoint_dir)
     return 0
 
 

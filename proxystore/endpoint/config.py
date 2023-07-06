@@ -46,6 +46,7 @@ class EndpointConfig:
     port: int
     relay_server: str | None = None
     database_path: str | None = None
+    key: bytes | None = None
     max_object_size: int | None = MAX_OBJECT_SIZE_DEFAULT
     peer_channels: int = 1
     verify_certificate: bool = True
