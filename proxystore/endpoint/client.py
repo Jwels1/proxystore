@@ -10,6 +10,9 @@ from requests.exceptions import RequestException  # noqa: F401
 
 from proxystore.endpoint.constants import MAX_CHUNK_LENGTH
 from proxystore.utils import chunk_bytes
+from proxystore.utils import home_dir
+from Crypto.PublicKey import RSA
+from Crypto.Cipher import PKCS1_OAEP
 
 
 def evict(
@@ -179,6 +182,71 @@ def put(
         data=chunk_bytes(data, MAX_CHUNK_LENGTH),
         stream=True,
     )
+    if not response.ok:
+        raise requests.exceptions.RequestException(
+            f'Endpoint returned HTTP error code {response.status_code}. '
+            f'{response.text}',
+            response=response,
+        )
+
+
+def encryption(
+    address: str,
+    name: str, 
+    key: str,
+    data: bytes,
+    endpoint: uuid.UUID | str | None = None,
+    session: requests.Session | None = None,
+
+) -> None:
+    """lorem ipsum.
+
+    Args:
+        address: Address of endpoint.
+        key: Key associated with object to retrieve.
+        data: Serialized data to put in the store.
+        endpoint: Optional UUID of remote endpoint to forward operation to.
+        session: Session instance to use for making the request. Reusing the
+            same session across multiple requests to the same host can improve
+            performance.
+
+    Raises:
+        RequestException: If the endpoint request results in an unexpected
+            error code.
+    """
+     
+
+     #NEED TO MAKE PUBKEY AND PUT_KEY A FUNCTION IN ENDPOINT
+    endpoint_str = (
+        str(endpoint) if isinstance(endpoint, uuid.UUID) else endpoint
+    )
+
+
+    get_ = requests.get if session is None else session.get
+    response = get_(
+            f'{address}/pubkey',
+            params={'endpoint': endpoint_str},
+            stream=True,
+        )
+    key = response.content
+    cipher_rsa = PKCS1_OAEP.new(key)
+
+    encrypted_key = cipher_rsa.encrypt(open(home_dir() + "/" + name + "/key.txt", "rb").read())
+
+    post = requests.post if session is None else session.post
+    response = post(
+        f'{address}/put_key',
+        headers={'Content-Type': 'application/octet-stream'},
+        params={'key': encrypted_key, 'endpoint': endpoint_str},
+        data=chunk_bytes(data, MAX_CHUNK_LENGTH),
+        stream=True,
+    )
+
+
+
+
+
+    
     if not response.ok:
         raise requests.exceptions.RequestException(
             f'Endpoint returned HTTP error code {response.status_code}. '

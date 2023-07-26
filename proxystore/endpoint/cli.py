@@ -20,6 +20,8 @@ from proxystore.endpoint.commands import list_endpoints
 from proxystore.endpoint.commands import remove_endpoint
 from proxystore.endpoint.commands import start_endpoint
 from proxystore.endpoint.commands import stop_endpoint
+from proxystore.endpoint.commands import encrypt_file
+from proxystore.endpoint.commands import add_key
 from proxystore.endpoint.config import read_config
 from proxystore.serialize import deserialize
 from proxystore.serialize import serialize
@@ -114,14 +116,6 @@ def version() -> None:
     help='Datachannels to use per peer connection.',
 )
 @click.option(
-    '--encrypt',
-    default = b'',
-    type = bytes ,
-    metavar='KEY',
-    help='Private encryption key')
-
-
-@click.option(
     '--persist/--no-persist',
     default=False,
     metavar='BOOL',
@@ -162,12 +156,11 @@ def remove(name: str) -> None:
 @cli.command()
 @click.argument('name', metavar='NAME', required=True)
 @click.option('--detach/--no-detach', default=True, help='Run as daemon.')
-@click.option('--encrypt', default = None, help='private encryption key')
 @click.pass_context
-def start(ctx: click.Context, name: str, detach: bool, encrypt: bytes) -> None:
+def start(ctx: click.Context, name: str, detach: bool) -> None:
     """Start an endpoint."""
     raise SystemExit(
-        start_endpoint(name, encrypt=encrypt,detach=detach, log_level=ctx.obj['LOG_LEVEL']),
+        start_endpoint(name, detach=detach, log_level=ctx.obj['LOG_LEVEL']),
     )
 
 
@@ -177,6 +170,19 @@ def stop(name: str) -> None:
     """Stop a detached endpoint."""
     raise SystemExit(stop_endpoint(name))
 
+
+@cli.command()
+@click.argument('name', metavar ='NAME', required=True)
+def encrypt(name: str) -> None:
+    """add public and private asymmetric encryption keys"""
+    raise SystemExit(encrypt_file(name))
+
+@cli.command()
+@click.argument('name', metavar ='NAME', required=True)
+@click.argument("key", metavar = "KEY", required=True)
+def key(name: str, key: str) -> None:
+    """add a symmetric key to the endpoint"""
+    raise SystemExit(add_key(name, key))
 
 @cli.group()
 @click.argument('name', metavar='NAME', required=True)

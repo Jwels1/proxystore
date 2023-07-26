@@ -15,7 +15,9 @@ import shutil
 import signal
 import socket
 import uuid
+import shutil
 from typing import Generator
+from Crypto.PublicKey import RSA
 
 import daemon.pidfile
 import psutil
@@ -29,6 +31,7 @@ from proxystore.endpoint.config import get_pid_filepath
 from proxystore.endpoint.config import read_config
 from proxystore.endpoint.config import write_config
 from proxystore.endpoint.serve import serve
+from proxystore.endpoint.endpoint import Endpoint
 from proxystore.utils import home_dir
 
 logger = logging.getLogger(__name__)
@@ -233,7 +236,7 @@ def remove_endpoint(
 
 def start_endpoint(
     name: str,
-    encrypt: str,
+    *,
     detach: bool = False,
     log_level: str = 'INFO',
     proxystore_dir: str | None = None,
@@ -242,7 +245,6 @@ def start_endpoint(
 
     Args:
         name: Name of endpoint to start.
-        encrypt: private encryption key
         detach: Start the endpoint as a daemon process.
         log_level: Logging level of the endpoint.
         proxystore_dir: Optionally specify the proxystore home directory.
@@ -254,7 +256,7 @@ def start_endpoint(
     """
     if proxystore_dir is None:
         proxystore_dir = home_dir()
-    print("HI")
+
     status = get_status(name, proxystore_dir)
     if status == EndpointStatus.RUNNING:
         logger.error(f'Endpoint {name} is already running.')
@@ -289,7 +291,6 @@ def start_endpoint(
 
     # Write out new config with host so clients can see the current host
     cfg.host = hostname
-    
     write_config(cfg, endpoint_dir)
 
     log_file = get_log_filepath(endpoint_dir)
@@ -312,7 +313,6 @@ def start_endpoint(
     with context:
         serve(cfg, log_level=log_level, log_file=log_file)
 
-    print(endpoint_dir)
     return 0
 
 
@@ -381,12 +381,94 @@ def stop_endpoint(name: str, *, proxystore_dir: str | None = None) -> int:
             p.send_signal(signal.SIGKILL)
         except psutil.NoSuchProcess:
             pass
+    
+    if os.path.isfile(home_dir() + "/" + name + "/key.txt"):
+        print("file is here")
+        os.remove(home_dir() + "/" + name + "/key.txt")
+
 
     if os.path.isfile(pid_file):  # pragma: no branch
         logger.debug(f'Cleaning up PID file ({pid_file}).')
         os.remove(pid_file)
 
     logger.info(f'Endpoint {name} has been stopped.')
+    return 0
+
+
+def encrypt_file(name: str, proxystore_dir: str | None = None) -> int:
+    """add public and private key to endpoint directory
+    
+    
+    Args:
+        name: Name of endpoint to start.
+        proxystore_dir: Optionally specify the proxystore home directory.
+            Defaults to [`home_dir()`][proxystore.utils.home_dir].
+
+    Returns:
+        Exit code where 0 is success and 1 is failure. Failure messages \
+        are logged to the default logger.
+    
+    """
+    if proxystore_dir is None:
+        proxystore_dir = home_dir()
+    status = get_status(name, proxystore_dir)
+    if status == EndpointStatus.UNKNOWN:
+        logger.error(f'A valid endpoint named {name} does not exist.')
+        logger.error('Use `list` to see available endpoints.')
+        return 1
+    elif status == EndpointStatus.STOPPED:
+        logger.info(f'Endpoint {name} is not running.')
+        return 1
+    
+    endpoint_dir = os.path.join(proxystore_dir, name)
+    
+    key = RSA.generate(2048)
+    private_key = key.export_key()
+    file_out = open(endpoint_dir + "/private.pem", "wb")
+    file_out.write(private_key)
+    file_out.close()
+
+    public_key = key.publickey().export_key()
+    file_out = open(endpoint_dir + "/receiver.pem", "wb")
+    file_out.write(public_key)
+    file_out.close()
+    return 0
+
+def add_key(name: str, key: str, proxystore_dir: str | None = None) -> int:
+    """creates symmetric key file in endpoint directory
+    
+    
+    Args:
+        name: Name of endpoint to start.
+        key: the byte symmetric key
+        proxystore_dir: Optionally specify the proxystore home directory.
+            Defaults to [`home_dir()`][proxystore.utils.home_dir].
+
+    Returns:
+        Exit code where 0 is success and 1 is failure. Failure messages \
+        are logged to the default logger.
+    
+    """
+
+
+
+    if proxystore_dir is None:
+        proxystore_dir = home_dir()
+    status = get_status(name, proxystore_dir)
+    if status == EndpointStatus.UNKNOWN:
+        logger.error(f'A valid endpoint named {name} does not exist.')
+        logger.error('Use `list` to see available endpoints.')
+        return 1
+    elif status == EndpointStatus.STOPPED:
+        logger.info(f'Endpoint {name} is not running.')
+        return 1
+    
+    endpoint_dir = os.path.join(proxystore_dir, name)
+    file_out = open(endpoint_dir + "/key.txt", "wb")
+    file_out.write(bytes(key, "utf-8"))
+    file_out.close()
+    
+
     return 0
 
 

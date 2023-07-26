@@ -17,6 +17,8 @@ else:  # pragma: <3.11 cover
 
 import requests
 from cryptography.fernet import Fernet
+from Crypto.PublicKey import RSA
+from Crypto.Cipher import PKCS1_OAEP
 
 from proxystore.endpoint import client
 from proxystore.endpoint.config import EndpointConfig
@@ -71,6 +73,7 @@ class EndpointConnector:
         self,
         endpoints: Sequence[str | UUID],
         proxystore_dir: str | None = None,
+        encryption: bool = False
     ) -> None:
         if len(endpoints) == 0:
             raise ValueError('At least one endpoint must be specified.')
@@ -123,6 +126,11 @@ class EndpointConnector:
         self.endpoint_port = found_endpoint.port
 
         self.address = f'http://{self.endpoint_host}:{self.endpoint_port}'
+
+
+        #if encryption:
+            
+
 
     def __enter__(self) -> Self:
         return self
@@ -288,3 +296,21 @@ class EndpointConnector:
             retrieve the objects.
         """
         return [self.put(obj, decrypt, crypt_key) for obj in objs]
+
+async def pubkey(self, endpoint_str) -> bytes:
+    
+        return open(home_dir() + "/" + endpoint_str + "/receiver.pem", "rb").read()
+        #need to define everything and set new return type
+        #need to use the client functions here
+    
+
+async def put_key(self, enc_key) -> None:
+
+    priv_key = open(home_dir() + "/" + self.name + "/private.pem", "rb").read()
+    cipher = PKCS1_OAEP.new(priv_key)
+    sym_key = cipher.decrypt(enc_key)
+    file_out = open(home_dir() + "/" + self.name + "/key.txt", "wb")
+    file_out.write(sym_key)
+    file_out.close()
+    #might have to put something in and set a new return
+

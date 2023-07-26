@@ -5,6 +5,7 @@ import asyncio
 import logging
 import re
 import warnings
+import os
 from collections import defaultdict
 from typing import Any
 from typing import Awaitable
@@ -37,6 +38,9 @@ from proxystore.p2p.counter import AtomicCounter
 from proxystore.p2p.exceptions import PeerConnectionError
 from proxystore.p2p.exceptions import PeerConnectionTimeoutError
 from proxystore.p2p.relay_client import RelayServerClient
+from proxystore.utils import home_dir
+from Crypto.PublicKey import RSA
+from Crypto.Cipher import PKCS1_OAEP
 
 logger = logging.getLogger(__name__)
 
@@ -370,6 +374,7 @@ class PeerConnection:
             self._peer_name = message.source_name
             if obj.type == 'offer':
                 await self.send_answer(message.source_uuid)
+
         elif isinstance(obj, RTCIceCandidate):  # pragma: no cover
             # We should not receive an RTCIceCandidate message via the
             # relay server but this is here following the aiortc example.
@@ -401,6 +406,34 @@ class PeerConnection:
                 'Timeout waiting for peer to peer connection to establish '
                 f'in {self._log_prefix}.',
             ) from e
+
+    async def share_encryption(self, peer: PeerConnection):
+
+
+        public_key = open(home_dir() + "/" + self._name + "/reciever.pem", "rb").read()
+        await self.send(public_key)
+
+        public_key = await peer.recv()
+        cipher_rsa = PKCS1_OAEP.new(public_key)
+
+        await peer.send(cipher_rsa.encrypt(open(home_dir() + "/" + peer._name + "/key.txt", "rb").read()))
+        encrypted_key = await self.recv()
+
+
+        private_key = RSA.import_key(open(home_dir() + "/" + self._name + "/private.pem", "rb").read())
+
+
+
+        # Decrypt the session key with the private RSA key
+        cipher_rsa = PKCS1_OAEP.new(private_key)
+        key = cipher_rsa.decrypt(encrypted_key)
+        
+        endpoint_dir = os.path.join(home_dir, self._name)
+        file_out = open(endpoint_dir + "/key.txt", "wb")
+        file_out.write(key)
+        file_out.close()
+
+
 
 
 def log_name(uuid: UUID, name: str) -> str:

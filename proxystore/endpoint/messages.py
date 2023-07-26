@@ -26,9 +26,10 @@ class EndpointRequest:
     """
 
     kind: Literal['request', 'response']
-    op: Literal['evict', 'exists', 'get', 'set']
+    op: Literal['evict', 'exists', 'get', 'set', 'pubkey', 'putkey']
     uuid: str
-    key: str
+    key: str | None = None
+    enc_key: bytes | None = None
     data: bytes | None = None
     exists: bool | None = None
     error: Exception | None = None

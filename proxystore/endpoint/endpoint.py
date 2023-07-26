@@ -9,8 +9,12 @@ from typing import Any
 from typing import Generator
 from uuid import UUID
 from uuid import uuid4
+import os
 
 from cryptography.fernet import Fernet
+from Crypto.PublicKey import RSA
+from Crypto.Cipher import PKCS1_OAEP
+
 from proxystore.endpoint.constants import MAX_OBJECT_SIZE_DEFAULT
 from proxystore.endpoint.exceptions import ObjectSizeExceededError
 from proxystore.endpoint.exceptions import PeeringNotAvailableError
@@ -25,6 +29,7 @@ from proxystore.serialize import deserialize
 from proxystore.serialize import SerializationError
 from proxystore.serialize import serialize
 from proxystore.utils import bytes_to_readable
+from proxystore.utils import home_dir
 
 logger = logging.getLogger(__name__)
 
@@ -140,6 +145,7 @@ class Endpoint:
         peer_timeout: int = 30,
         storage: Storage | None = None,
         verify_certificate: bool = True,
+        symmetric_key: bytes | None = None,
     ) -> None:
         self._name = name
         self._uuid = uuid
@@ -148,6 +154,10 @@ class Endpoint:
         self._peer_channels = peer_channels
         self._peer_timeout = peer_timeout
         self._verify_certificate = verify_certificate
+
+        if os.path.isfile(home_dir() + "/" + name + "/key.txt"):
+             self.symmetric_key = open((home_dir() + "/" + name + "/key.txt"), 'rb').read()
+
 
         self._storage = DictStorage() if storage is None else storage
 
@@ -166,6 +176,9 @@ class Endpoint:
             f'{self._log_prefix}: initialized endpoint operating '
             f'in {self._mode.name} mode',
         )
+
+       
+
 
     @property
     def _log_prefix(self) -> str:
@@ -262,6 +275,10 @@ class Endpoint:
                     assert message.data is not None
                     await self.set(message.key, message.data)
                     message.data = None
+                elif message.op == 'pubkey':
+                    message.data = await self.pubkey()
+                elif message.op == 'putkey':
+                    await self.put_key(message.enc_key)
                 else:
                     raise AssertionError(
                         f'unsupported request type {type(message).__name__}',
@@ -387,8 +404,7 @@ class Endpoint:
         self,
         key: str,
         endpoint: UUID | None = None,
-        decrypt: bool = False,
-        crypt_key = b''
+        decrypt: bool = False
     ) -> bytes | None:
         """Get value associated with key on endpoint.
 
@@ -398,7 +414,6 @@ class Endpoint:
                 unspecified or if the endpoint is on solo mode, the operation
                 will be performed on the local endpoint.
             decrypt: boolean if information was originally encrypted
-            crypt_key: key for symmetric encryption
 
         Returns:
             Value associated with key.
@@ -420,7 +435,7 @@ class Endpoint:
             request_future = await self._request_from_peer(endpoint, request)
             response = await request_future
             if decrypt == True:
-                fernet = Fernet(crypt_key)
+                fernet = Fernet(self.symmetric_key)
                 response.data = fernet.decrypt(response.data)
             return response.data
         else:
@@ -472,6 +487,79 @@ class Endpoint:
             )
         else:
             await self._storage.set(key, data)
+
+    async def pubkey(
+            self,
+            endpoint: UUID | None = None
+            ) -> bytes:
+        
+        """return the public key on an endpoint.
+
+        Args:
+            endpoint: Endpoint to perform operation on. If
+                unspecified or if the endpoint is on solo mode, the operation
+                will be performed on the local endpoint.
+
+        Raises:
+            ...
+        """
+
+        if self._is_peer_request(endpoint):
+            assert endpoint is not None
+            request = EndpointRequest(
+                kind='request',
+                op='pubkey',
+                uuid=str(uuid4()),
+                
+            )
+            request_future = await self._request_from_peer(endpoint, request)
+            response = await request_future
+            return response.data
+        else:
+
+            return RSA.import_key(open(home_dir() + "/" + self.name + "/receiver.pem", "rb").read())
+    
+
+
+    async def put_key(
+            self, 
+            enc_key: bytes,
+            endpoint: UUID | None = None,
+            ) -> None:
+        """given an ecnrypted symmetric key, use a private key to decrypt then store it.
+
+        Args:
+            
+            enc_key: The RSA encrypted symmetric key.
+            endpoint: Endpoint to perform operation on. If
+                unspecified or if the endpoint is on solo mode, the operation
+                will be performed on the local endpoint.
+
+        Raises:
+            ...
+        """
+
+        if self._is_peer_request(endpoint):
+            assert endpoint is not None
+            request = EndpointRequest(
+                kind='request',
+                op='putkey',
+                uuid=str(uuid4()),
+                enc_key = enc_key
+            )
+            request_future = await self._request_from_peer(endpoint, request)
+            await request_future
+        else:
+
+            priv_key = RSA.import_key(open(home_dir() + "/" + self.name + "/private.pem", "rb").read())
+            cipher = PKCS1_OAEP.new(priv_key)
+            sym_key = cipher.decrypt(enc_key)
+            file_out = open(home_dir() + "/" + self.name + "/key.txt", "wb")
+            file_out.write(sym_key)
+            file_out.close()
+
+
+
 
     async def close(self) -> None:
         """Close the endpoint and any open connections safely."""
