@@ -49,6 +49,7 @@ endpoints = [
     "quart>=0.18.0",
     "requests>=2.27.1",
     "websockets>=10.0",
+    "pycryptodome"
 ]
 redis = ["redis>=3.4"]
 zmq = ["pyzmq"]

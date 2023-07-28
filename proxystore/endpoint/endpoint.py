@@ -314,6 +314,7 @@ class Endpoint:
             f'{self._log_prefix}: sending {request.op} request with '
             f'id={request.uuid} and key={request.key}) to {endpoint}',
         )
+
         try:
             await self._peer_manager.send(endpoint, serialize(request))
         except Exception as e:
@@ -503,7 +504,9 @@ class Endpoint:
         Raises:
             ...
         """
-
+        logger.debug(
+            f'{self._log_prefix}: PUB_KEY on endpoint={endpoint}',
+        )
         if self._is_peer_request(endpoint):
             assert endpoint is not None
             request = EndpointRequest(
@@ -517,7 +520,8 @@ class Endpoint:
             return response.data
         else:
 
-            return RSA.import_key(open(home_dir() + "/" + self.name + "/receiver.pem", "rb").read())
+            return_key = RSA.import_key(open(home_dir() + "/" + self.name + "/receiver.pem", "rb").read())
+            return return_key.export_key()
     
 
 
@@ -538,6 +542,9 @@ class Endpoint:
         Raises:
             ...
         """
+        logger.debug(
+            f'{self._log_prefix}: PUT_KEY encrypted key={enc_key}on endpoint={endpoint}',
+        )
 
         if self._is_peer_request(endpoint):
             assert endpoint is not None
