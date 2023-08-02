@@ -565,6 +565,20 @@ class Endpoint:
             file_out.write(sym_key)
             file_out.close()
 
+    async def key_transfer(self, 
+            endpoint : UUID
+            ) -> None :
+        
+        """Transfer the symmetric key from one endpoint to another"""
+        public_key =  await self.pubkey(endpoint)
+        public_key = RSA.import_key(public_key)
+        cipher_rsa = PKCS1_OAEP.new(public_key)
+
+        symmetric_key = RSA.import_key(open(home_dir() + "/" + self.name + "/key.txt", "rb").read())
+        encrypted_key = cipher_rsa.encrypt(symmetric_key)
+
+        self.put_key(enc_key=encrypted_key, endpoint=endpoint)
+
 
 
 
